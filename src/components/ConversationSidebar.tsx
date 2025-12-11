@@ -2,9 +2,20 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, MessageCircle, Pencil, Trash2, X, Home } from "lucide-react";
+import { Plus, MessageCircle, Pencil, Trash2, X, Home, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Conversation {
   id: string;
@@ -31,7 +42,9 @@ export const ConversationSidebar = ({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Fetch conversations
   useEffect(() => {
@@ -83,13 +96,18 @@ export const ConversationSidebar = ({
       return;
     }
 
+    const newTitle = editTitle.trim();
     await supabase
       .from("angel_conversations")
-      .update({ title: editTitle.trim() })
+      .update({ title: newTitle })
       .eq("id", id);
 
     setEditingId(null);
     setEditTitle("");
+    toast({
+      title: "✨ Yayyy!",
+      description: `Cuộc trò chuyện của bé giờ tên là "${newTitle}" siêu đáng yêu luôn á!`,
+    });
   };
 
   const handleDeleteConversation = async (id: string) => {
@@ -97,6 +115,11 @@ export const ConversationSidebar = ({
     if (activeConversationId === id) {
       onSelectConversation(null);
     }
+    setDeleteId(null);
+    toast({
+      title: "💔 Đã chia tay...",
+      description: "Angel sẽ nhớ bé mãi trong tim nha ♡",
+    });
   };
 
   const formatDate = (dateString: string) => {
@@ -112,6 +135,27 @@ export const ConversationSidebar = ({
 
   return (
     <>
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>🥺 Bé chắc muốn chia tay không?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bé chắc muốn chia tay kỷ niệm này với Angel hả? Angel sẽ quên cuộc trò chuyện này mãi mãi đó... 💔
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Để Angel giữ lại ♡</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteId && handleDeleteConversation(deleteId)}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Chia tay thật nha Angel
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Overlay for mobile */}
       {isOpen && (
         <div
@@ -153,14 +197,16 @@ export const ConversationSidebar = ({
           </div>
         </div>
 
-        {/* New Chat Button */}
+        {/* New Chat Button - Bright Orange/Yellow with Sparkle */}
         <div className="p-4">
           <Button
             onClick={handleNewChat}
-            className="w-full bg-gradient-golden hover:opacity-90 text-primary-foreground shadow-golden"
+            className="w-full relative overflow-hidden bg-gradient-to-r from-amber-400 via-orange-500 to-yellow-400 hover:from-amber-500 hover:via-orange-600 hover:to-yellow-500 text-white font-semibold shadow-lg shadow-orange-500/30 transition-all duration-300 hover:shadow-orange-500/50 hover:scale-[1.02]"
           >
-            <Plus className="w-4 h-4 mr-2" />
+            <Sparkles className="w-4 h-4 mr-2 animate-pulse" />
+            <Plus className="w-4 h-4 mr-1" />
             Chat mới với Angel
+            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-shimmer" />
           </Button>
         </div>
 
@@ -220,7 +266,7 @@ export const ConversationSidebar = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteConversation(conversation.id);
+                          setDeleteId(conversation.id);
                         }}
                         className="p-1 hover:bg-destructive/20 hover:text-destructive rounded"
                         title="Xóa"

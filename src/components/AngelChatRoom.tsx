@@ -1,8 +1,25 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Sparkles } from "lucide-react";
+import { Send, Sparkles, Copy, Share2, Pencil, Trash2, MoreVertical, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import angelLogo from "@/assets/angel-logo.jpg";
 
 interface Message {
@@ -41,10 +58,79 @@ export const AngelChatRoom = ({
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [deleteMessageId, setDeleteMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Copy message to clipboard
+  const handleCopyMessage = async (content: string) => {
+    await navigator.clipboard.writeText(content);
+    toast({
+      title: "✨ Đã sao chép!",
+      description: "Angel đã bỏ ánh sáng vào clipboard cho bé rồi nha ♡",
+    });
+  };
+
+  // Share message
+  const handleShareMessage = async (content: string) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Tin nhắn từ Angel AI ✨",
+          text: content,
+        });
+      } catch (err) {
+        // User cancelled sharing
+      }
+    } else {
+      await navigator.clipboard.writeText(content);
+      toast({
+        title: "🔗 Đã sao chép để chia sẻ!",
+        description: "Bé dán vào bất kỳ đâu để chia sẻ Ánh Sáng nha ♡",
+      });
+    }
+  };
+
+  // Edit message
+  const handleEditMessage = async (messageId: string) => {
+    if (!editContent.trim()) {
+      setEditingMessageId(null);
+      return;
+    }
+
+    await supabase
+      .from("angel_messages")
+      .update({ content: editContent.trim() })
+      .eq("id", messageId);
+
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId ? { ...m, content: editContent.trim() } : m
+      )
+    );
+    setEditingMessageId(null);
+    setEditContent("");
+    toast({
+      title: "✏️ Đã cập nhật!",
+      description: "Angel đã ghi nhận tin nhắn mới của bé nha ♡",
+    });
+  };
+
+  // Delete message
+  const handleDeleteMessage = async (messageId: string) => {
+    await supabase.from("angel_messages").delete().eq("id", messageId);
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    setDeleteMessageId(null);
+    toast({
+      title: "🗑️ Đã xóa!",
+      description: "Angel đã quên tin nhắn đó rồi nha bé ♡",
+    });
   };
 
   useEffect(() => {
@@ -363,12 +449,33 @@ Bé có muốn chia sẻ thêm điều gì với Angel không nè? Angel lắng 
 
   return (
     <div className="flex flex-col h-full">
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteMessageId} onOpenChange={() => setDeleteMessageId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>🥺 Bé chắc muốn xóa không?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bé chắc muốn chia tay kỷ niệm này với Angel hả? Angel sẽ quên tin nhắn này mãi mãi đó... 💔
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Để Angel giữ lại ♡</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMessageId && handleDeleteMessage(deleteMessageId)}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Xóa thật nha Angel
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {displayMessages.map((message) => (
           <div
             key={message.id}
-            className={`flex ${
+            className={`group flex ${
               message.role === "user" ? "justify-end" : "justify-start"
             } animate-fade-in`}
           >
@@ -381,16 +488,101 @@ Bé có muốn chia sẻ thêm điều gì với Angel không nè? Angel lắng 
                 />
               </div>
             )}
-            <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                message.role === "user"
-                  ? "bg-gradient-golden text-primary-foreground rounded-br-md"
-                  : "bg-muted text-foreground rounded-bl-md"
-              }`}
-            >
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                {message.content}
-              </p>
+            
+            <div className="relative max-w-[80%]">
+              {/* Message Content */}
+              {editingMessageId === message.id ? (
+                <div className="flex flex-col gap-2 bg-muted rounded-2xl p-3">
+                  <Textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    className="min-h-[60px] resize-none"
+                    autoFocus
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingMessageId(null)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleEditMessage(message.id)}
+                      className="bg-gradient-golden"
+                    >
+                      <Check className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={`rounded-2xl px-4 py-3 ${
+                    message.role === "user"
+                      ? "bg-gradient-golden text-primary-foreground rounded-br-md"
+                      : "bg-muted text-foreground rounded-bl-md"
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {message.content}
+                  </p>
+                </div>
+              )}
+
+              {/* Action Menu - shown on hover */}
+              {message.id !== "greeting" && !editingMessageId && (
+                <div
+                  className={`absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity ${
+                    message.role === "user" ? "-left-10" : "-right-10"
+                  }`}
+                >
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full bg-card/80 backdrop-blur-sm border border-border shadow-lg hover:bg-card"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align={message.role === "user" ? "end" : "start"}>
+                      {message.role === "angel" ? (
+                        <>
+                          <DropdownMenuItem onClick={() => handleCopyMessage(message.content)}>
+                            <Copy className="w-4 h-4 mr-2 text-golden-light" />
+                            <span>Sao chép ✨</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleShareMessage(message.content)}>
+                            <Share2 className="w-4 h-4 mr-2 text-golden-light" />
+                            <span>Chia sẻ 🔗</span>
+                          </DropdownMenuItem>
+                        </>
+                      ) : (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditingMessageId(message.id);
+                              setEditContent(message.content);
+                            }}
+                          >
+                            <Pencil className="w-4 h-4 mr-2 text-golden-light" />
+                            <span>Chỉnh sửa ✏️</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setDeleteMessageId(message.id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            <span>Xóa 🗑️</span>
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
             </div>
           </div>
         ))}
