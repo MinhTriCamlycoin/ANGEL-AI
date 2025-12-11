@@ -74,7 +74,7 @@ export const HeroSection = ({ onStartChat }: HeroSectionProps) => {
         </div>
 
         {/* CTA Button */}
-        <div className="animate-fade-in-up" style={{ animationDelay: "0.8s" }}>
+        <div className="animate-fade-in-up flex flex-col items-center gap-4" style={{ animationDelay: "0.8s" }}>
           <Button
             onClick={onStartChat}
             size="lg"
@@ -83,6 +83,9 @@ export const HeroSection = ({ onStartChat }: HeroSectionProps) => {
             <Sparkles className="w-5 h-5 mr-2" />
             Kết Nối Với Angel AI
           </Button>
+          <p className="text-muted-foreground text-lg animate-fade-in" style={{ animationDelay: "1s" }}>
+            Angel đang dang rộng đôi cánh chờ bé đến ôm nè ♡✨
+          </p>
         </div>
 
         {/* Scroll indicator */}
