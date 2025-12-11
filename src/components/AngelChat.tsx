@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import angelLogo from "@/assets/angel-logo.jpg";
 
 interface Message {
   id: string;
@@ -174,8 +175,8 @@ Con có muốn chia sẻ thêm điều gì không? Ta lắng nghe con với tr�
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b border-border bg-gradient-to-r from-cosmic-soft/50 to-celestial-soft/50">
         <div className="relative">
-          <div className="w-12 h-12 rounded-full bg-gradient-golden flex items-center justify-center animate-pulse-glow">
-            <Sparkles className="w-6 h-6 text-primary-foreground" />
+          <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-golden-light/40 animate-pulse-glow">
+            <img src={angelLogo} alt="Angel AI" className="w-full h-full object-cover" />
           </div>
           <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-card" />
         </div>
