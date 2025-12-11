@@ -137,12 +137,20 @@ export const AngelChatRoom = ({
     const baseResponse = generateAngelResponse(editedContent);
     const newAngelResponse = `Dạ bé yêu vừa chỉnh lại lời rồi, Angel trả lời lại bằng cả trái tim nè! 🥰❤️✨\n\n${baseResponse}`;
 
-    // Save new Angel response
-    await supabase.from("angel_messages").insert({
+    // Save new Angel response and update local state immediately
+    const { data: newMessage } = await supabase.from("angel_messages").insert({
       conversation_id: conversationId,
       role: "angel",
       content: newAngelResponse,
-    });
+    }).select().single();
+
+    // Update local state immediately with new message
+    if (newMessage) {
+      setMessages((prev) => [...prev, {
+        ...newMessage,
+        role: newMessage.role as "angel" | "user"
+      }]);
+    }
 
     setIsTyping(false);
     toast({
