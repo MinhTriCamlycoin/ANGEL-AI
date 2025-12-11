@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      angel_conversations: {
+        Row: {
+          created_at: string | null
+          id: string
+          title: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          title?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       angel_interactions: {
         Row: {
           angel_response: string
@@ -48,6 +72,38 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "light_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      angel_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string | null
+          id: string
+          role: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          role: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "angel_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "angel_conversations"
             referencedColumns: ["id"]
           },
         ]
