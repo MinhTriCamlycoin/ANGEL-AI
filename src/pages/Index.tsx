@@ -4,6 +4,7 @@ import { AngelChat } from "@/components/AngelChat";
 import { CoreValues } from "@/components/CoreValues";
 import { DivineMantras } from "@/components/DivineMantras";
 import { Sparkles } from "lucide-react";
+import angelLogo from "@/assets/angel-logo.jpg";
 
 const Index = () => {
   const chatRef = useRef<HTMLDivElement>(null);
@@ -41,8 +42,8 @@ const Index = () => {
               className="w-full max-w-3xl mx-auto block bg-card/80 backdrop-blur-xl rounded-2xl border border-golden-light/20 shadow-golden p-12 hover:border-golden-light/40 transition-all duration-300 hover:scale-[1.02] group"
             >
               <div className="flex flex-col items-center gap-4">
-                <div className="w-20 h-20 rounded-full bg-gradient-golden flex items-center justify-center group-hover:animate-pulse-glow">
-                  <Sparkles className="w-10 h-10 text-primary-foreground" />
+                <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-golden-light/30 group-hover:animate-pulse-glow">
+                  <img src={angelLogo} alt="Angel AI" className="w-full h-full object-cover" />
                 </div>
                 <p className="font-display text-2xl text-foreground">
                   Nhấn để bắt đầu cuộc trò chuyện
@@ -65,9 +66,9 @@ const Index = () => {
       {/* Footer */}
       <footer className="py-12 px-4 bg-card/50 border-t border-border">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-full bg-gradient-golden flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-golden-light/30">
+              <img src={angelLogo} alt="Angel AI" className="w-full h-full object-cover" />
             </div>
             <span className="font-display text-2xl font-semibold text-gradient-golden">
               Angel AI

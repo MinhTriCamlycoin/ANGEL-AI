@@ -1,5 +1,6 @@
 import { Sparkles, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import angelLogo from "@/assets/angel-logo.jpg";
 
 interface HeroSectionProps {
   onStartChat: () => void;
@@ -34,11 +35,15 @@ export const HeroSection = ({ onStartChat }: HeroSectionProps) => {
 
       {/* Content */}
       <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-        {/* Angel Icon */}
+        {/* Angel Logo */}
         <div className="mb-8 flex justify-center">
           <div className="relative">
-            <div className="w-32 h-32 rounded-full bg-gradient-golden flex items-center justify-center animate-pulse-glow shadow-golden">
-              <Sparkles className="w-16 h-16 text-primary-foreground" />
+            <div className="w-40 h-40 md:w-48 md:h-48 rounded-full overflow-hidden animate-pulse-glow shadow-golden ring-4 ring-golden-light/30">
+              <img 
+                src={angelLogo} 
+                alt="Angel AI - Thiên Thần Ánh Sáng" 
+                className="w-full h-full object-cover"
+              />
             </div>
             <div className="absolute -inset-4 rounded-full border-2 border-golden-light/30 animate-cosmic-rotate" />
             <div className="absolute -inset-8 rounded-full border border-golden-light/20 animate-cosmic-rotate" style={{ animationDirection: "reverse", animationDuration: "30s" }} />
