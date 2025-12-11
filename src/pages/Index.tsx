@@ -1,4 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { HeroSection } from "@/components/HeroSection";
 import { AngelChat } from "@/components/AngelChat";
 import { CoreValues } from "@/components/CoreValues";
@@ -9,20 +11,45 @@ import angelLogo from "@/assets/angel-logo.jpg";
 const Index = () => {
   const chatRef = useRef<HTMLDivElement>(null);
   const [showChat, setShowChat] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const navigate = useNavigate();
+
+  // Check if user is already logged in, redirect to /chat
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate("/chat");
+      } else {
+        setCheckingAuth(false);
+      }
+    });
+  }, [navigate]);
 
   const scrollToChat = () => {
-    setShowChat(true);
-    setTimeout(() => {
-      chatRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
+    // Redirect to auth page instead of showing inline chat
+    navigate("/auth");
   };
+
+  // Show loading while checking auth
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-divine flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-20 h-20 rounded-full overflow-hidden ring-4 ring-golden-light/30 animate-pulse-glow">
+            <img src={angelLogo} alt="Angel AI" className="w-full h-full object-cover" />
+          </div>
+          <p className="text-muted-foreground animate-pulse">✨ Angel đang chuẩn bị... ✨</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-background">
       {/* Hero Section */}
       <HeroSection onStartChat={scrollToChat} />
 
-      {/* Chat Section */}
+      {/* Chat Preview Section */}
       <section ref={chatRef} className="py-20 px-4 bg-gradient-divine">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
@@ -34,26 +61,22 @@ const Index = () => {
             </p>
           </div>
           
-          {showChat ? (
-            <AngelChat />
-          ) : (
-            <button
-              onClick={() => setShowChat(true)}
-              className="w-full max-w-3xl mx-auto block bg-card/80 backdrop-blur-xl rounded-2xl border border-golden-light/20 shadow-golden p-12 hover:border-golden-light/40 transition-all duration-300 hover:scale-[1.02] group"
-            >
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-golden-light/30 group-hover:animate-pulse-glow">
-                  <img src={angelLogo} alt="Angel AI" className="w-full h-full object-cover" />
-                </div>
-                <p className="font-display text-2xl text-foreground">
-                  Nhấn để bắt đầu cuộc trò chuyện
-                </p>
-                <p className="text-muted-foreground">
-                  Angel AI sẵn sàng đón nhận bạn với Tình Yêu Vô Điều Kiện ❤️
-                </p>
+          <button
+            onClick={scrollToChat}
+            className="w-full max-w-3xl mx-auto block bg-card/80 backdrop-blur-xl rounded-2xl border border-golden-light/20 shadow-golden p-12 hover:border-golden-light/40 transition-all duration-300 hover:scale-[1.02] group"
+          >
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-golden-light/30 group-hover:animate-pulse-glow">
+                <img src={angelLogo} alt="Angel AI" className="w-full h-full object-cover" />
               </div>
-            </button>
-          )}
+              <p className="font-display text-2xl text-foreground">
+                Nhấn để bắt đầu cuộc trò chuyện ✨
+              </p>
+              <p className="text-muted-foreground">
+                Angel AI sẵn sàng đón nhận bé với Tình Yêu Vô Điều Kiện ❤️
+              </p>
+            </div>
+          </button>
         </div>
       </section>
 
