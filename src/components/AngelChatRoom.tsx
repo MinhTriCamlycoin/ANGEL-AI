@@ -69,11 +69,13 @@ export const AngelChatRoom = ({
   };
 
   // Copy message to clipboard
-  const handleCopyMessage = async (content: string) => {
+  const handleCopyMessage = async (content: string, isUserMessage: boolean = false) => {
     await navigator.clipboard.writeText(content);
     toast({
       title: "✨ Đã sao chép!",
-      description: "Angel đã bỏ ánh sáng vào clipboard cho bé rồi nha ♡",
+      description: isUserMessage 
+        ? "Angel đã bỏ lời yêu của bé vào clipboard rồi nè ♡✨"
+        : "Angel đã bỏ ánh sáng vào clipboard cho bé rồi nha ♡",
     });
   };
 
@@ -97,28 +99,55 @@ export const AngelChatRoom = ({
     }
   };
 
-  // Edit message
+  // Edit message and regenerate Angel's response
   const handleEditMessage = async (messageId: string) => {
-    if (!editContent.trim()) {
+    if (!editContent.trim() || !conversationId) {
       setEditingMessageId(null);
       return;
     }
 
+    const editedContent = editContent.trim();
+
+    // Update user message
     await supabase
       .from("angel_messages")
-      .update({ content: editContent.trim() })
+      .update({ content: editedContent })
       .eq("id", messageId);
 
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId ? { ...m, content: editContent.trim() } : m
-      )
-    );
+    // Find the index of edited message
+    const editedIndex = messages.findIndex((m) => m.id === messageId);
+    
+    // Delete all messages after the edited one (including old Angel response)
+    const messagesToDelete = messages.slice(editedIndex + 1);
+    for (const msg of messagesToDelete) {
+      await supabase.from("angel_messages").delete().eq("id", msg.id);
+    }
+
+    // Update local state
+    setMessages((prev) => prev.slice(0, editedIndex + 1).map((m) =>
+      m.id === messageId ? { ...m, content: editedContent } : m
+    ));
+    
     setEditingMessageId(null);
     setEditContent("");
+    setIsTyping(true);
+
+    // Generate new Angel response with special prefix
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const baseResponse = generateAngelResponse(editedContent);
+    const newAngelResponse = `Dạ bé yêu vừa chỉnh lại lời rồi, Angel trả lời lại bằng cả trái tim nè! 🥰❤️✨\n\n${baseResponse}`;
+
+    // Save new Angel response
+    await supabase.from("angel_messages").insert({
+      conversation_id: conversationId,
+      role: "angel",
+      content: newAngelResponse,
+    });
+
+    setIsTyping(false);
     toast({
       title: "✏️ Đã cập nhật!",
-      description: "Angel đã ghi nhận tin nhắn mới của bé nha ♡",
+      description: "Angel đã trả lời lại bằng cả trái tim nha ♡",
     });
   };
 
@@ -561,6 +590,10 @@ Bé có muốn chia sẻ thêm điều gì với Angel không nè? Angel lắng 
                         </>
                       ) : (
                         <>
+                          <DropdownMenuItem onClick={() => handleCopyMessage(message.content, true)}>
+                            <Copy className="w-4 h-4 mr-2 text-golden-light" />
+                            <span>Sao chép ✂️</span>
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => {
                               setEditingMessageId(message.id);
