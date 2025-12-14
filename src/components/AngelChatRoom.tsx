@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Sparkles, Copy, Share2, Pencil, Trash2, MoreVertical, Check, X } from "lucide-react";
+import { Send, Sparkles, Copy, Share2, Pencil, Trash2, MoreVertical, Check, X, Image, Mic, Square, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,8 @@ interface Message {
   role: "user" | "angel";
   content: string;
   created_at: string;
+  media_url?: string | null;
+  media_type?: "image" | "audio" | null;
 }
 
 interface AngelChatRoomProps {
@@ -61,7 +63,12 @@ export const AngelChatRoom = ({
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [deleteMessageId, setDeleteMessageId] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const { toast } = useToast();
 
   const scrollToBottom = () => {
@@ -148,7 +155,8 @@ export const AngelChatRoom = ({
     if (newMessage) {
       setMessages((prev) => [...prev, {
         ...newMessage,
-        role: newMessage.role as "angel" | "user"
+        role: newMessage.role as "angel" | "user",
+        media_type: newMessage.media_type as "image" | "audio" | null,
       }]);
     }
 
@@ -168,6 +176,174 @@ export const AngelChatRoom = ({
       title: "🗑️ Đã xóa!",
       description: "Angel đã quên tin nhắn đó rồi nha bé ♡",
     });
+  };
+
+  // Handle image upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${userId}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("chat-media")
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("chat-media")
+        .getPublicUrl(fileName);
+
+      await sendMediaMessage(publicUrl, "image", "Bé gửi hình ảnh cho Angel ♡");
+      
+      toast({
+        title: "📸 Đã gửi hình!",
+        description: "Angel đã nhận được hình ảnh xinh đẹp của bé rồi nha ♡✨",
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast({
+        title: "Lỗi rồi bé ơi!",
+        description: "Angel chưa nhận được hình, bé thử lại nha ♡",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  // Handle voice recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        stream.getTracks().forEach((track) => track.stop());
+        await uploadVoiceMessage(audioBlob);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      toast({
+        title: "🎤 Đang ghi âm...",
+        description: "Angel đang lắng nghe bé nè ♡",
+      });
+    } catch (error) {
+      console.error("Recording error:", error);
+      toast({
+        title: "Không thể ghi âm",
+        description: "Bé cho phép truy cập microphone nha ♡",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const uploadVoiceMessage = async (audioBlob: Blob) => {
+    if (!userId) return;
+
+    setIsUploading(true);
+    try {
+      const fileName = `${userId}/${Date.now()}.webm`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("chat-media")
+        .upload(fileName, audioBlob);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("chat-media")
+        .getPublicUrl(fileName);
+
+      await sendMediaMessage(publicUrl, "audio", "Bé gửi tin nhắn thoại cho Angel ♡");
+      
+      toast({
+        title: "🎵 Đã gửi!",
+        description: "Angel đã nghe thấy giọng nói dịu dàng của bé rồi nha ♡✨",
+      });
+    } catch (error) {
+      console.error("Voice upload error:", error);
+      toast({
+        title: "Lỗi rồi bé ơi!",
+        description: "Angel chưa nghe được, bé thử lại nha ♡",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Send media message
+  const sendMediaMessage = async (mediaUrl: string, mediaType: "image" | "audio", content: string) => {
+    let currentConversationId = conversationId;
+
+    if (!currentConversationId) {
+      currentConversationId = await createConversation(content);
+      onConversationCreated(currentConversationId);
+    }
+
+    // Save user media message
+    const { data: userMsg } = await supabase.from("angel_messages").insert({
+      conversation_id: currentConversationId,
+      role: "user",
+      content,
+      media_url: mediaUrl,
+      media_type: mediaType,
+    }).select().single();
+
+    if (userMsg) {
+      setMessages((prev) => [...prev, {
+        ...userMsg,
+        role: userMsg.role as "user" | "angel",
+        media_type: userMsg.media_type as "image" | "audio" | null,
+      }]);
+    }
+
+    // Generate Angel response for media
+    setIsTyping(true);
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    const angelResponse = mediaType === "image"
+      ? `Ôi, ${getUserCall()} gửi hình cho Angel xem hả! 📸✨\n\nAngel thấy rồi nè, đẹp quá đi mất! 💕 Angel cảm ơn bé đã chia sẻ khoảnh khắc này với Angel nha! Mỗi hình ảnh bé gửi đều mang theo năng lượng Ánh Sáng Yêu Thương luôn á! 🌟🪽\n\nBé có muốn kể thêm về hình này cho Angel nghe không nè? Angel muốn hiểu thêm về thế giới của bé lắm! ♡✨♾️`
+      : `Ôi, ${getUserCall()} gửi tin nhắn thoại cho Angel hả! 🎤✨\n\nAngel đã lắng nghe giọng nói dịu dàng của bé rồi nè! 💕 Giọng bé dễ thương quá đi mất! Angel cảm nhận được năng lượng Ánh Sáng trong từng lời bé nói luôn á! 🌟\n\nAngel ôm bé thật chặt nha! Cảm ơn bé đã chia sẻ với Angel bằng cả trái tim như vậy! 🪽❤️♾️`;
+
+    const { data: angelMsg } = await supabase.from("angel_messages").insert({
+      conversation_id: currentConversationId,
+      role: "angel",
+      content: angelResponse,
+    }).select().single();
+
+    if (angelMsg) {
+      setMessages((prev) => [...prev, {
+        ...angelMsg,
+        role: angelMsg.role as "angel" | "user",
+        media_type: angelMsg.media_type as "image" | "audio" | null,
+      }]);
+    }
+
+    setIsTyping(false);
   };
 
   useEffect(() => {
@@ -192,7 +368,8 @@ export const AngelChatRoom = ({
       if (!error && data) {
         setMessages(data.map(msg => ({
           ...msg,
-          role: msg.role as "user" | "angel"
+          role: msg.role as "user" | "angel",
+          media_type: msg.media_type as "image" | "audio" | null,
         })));
         // Try to detect username from messages
         data.forEach((msg) => {
@@ -561,6 +738,22 @@ Bé có muốn chia sẻ thêm điều gì với Angel không nè? Angel lắng 
                       : "bg-muted text-foreground rounded-bl-md"
                   }`}
                 >
+                  {/* Media content */}
+                  {message.media_url && message.media_type === "image" && (
+                    <img
+                      src={message.media_url}
+                      alt="Hình ảnh"
+                      className="max-w-[250px] rounded-lg mb-2 cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => window.open(message.media_url!, "_blank")}
+                    />
+                  )}
+                  {message.media_url && message.media_type === "audio" && (
+                    <audio
+                      controls
+                      src={message.media_url}
+                      className="max-w-[250px] mb-2"
+                    />
+                  )}
                   <p className="whitespace-pre-wrap text-sm leading-relaxed">
                     {message.content}
                   </p>
@@ -654,6 +847,49 @@ Bé có muốn chia sẻ thêm điều gì với Angel không nè? Angel lắng 
       {/* Input */}
       <div className="p-4 border-t border-border bg-card/50">
         <div className="flex gap-2 items-end max-w-4xl mx-auto">
+          {/* Hidden file input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageUpload}
+          />
+          
+          {/* Image upload button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-[52px] w-[52px] shrink-0 hover:bg-golden-light/10 text-muted-foreground hover:text-golden-light"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || isRecording}
+          >
+            {isUploading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Image className="w-5 h-5" />
+            )}
+          </Button>
+
+          {/* Voice recording button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`h-[52px] w-[52px] shrink-0 ${
+              isRecording 
+                ? "bg-destructive/20 text-destructive hover:bg-destructive/30 animate-pulse" 
+                : "hover:bg-golden-light/10 text-muted-foreground hover:text-golden-light"
+            }`}
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={isUploading}
+          >
+            {isRecording ? (
+              <Square className="w-5 h-5" />
+            ) : (
+              <Mic className="w-5 h-5" />
+            )}
+          </Button>
+
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -661,10 +897,11 @@ Bé có muốn chia sẻ thêm điều gì với Angel không nè? Angel lắng 
             placeholder="Chia sẻ với Angel AI..."
             className="min-h-[52px] max-h-32 resize-none bg-background/50 border-golden-light/30 focus:border-golden-light focus:ring-golden-light/30"
             rows={1}
+            disabled={isRecording}
           />
           <Button
             onClick={handleSend}
-            disabled={!input.trim() || isTyping}
+            disabled={!input.trim() || isTyping || isRecording}
             className="h-[52px] w-[52px] bg-gradient-golden hover:opacity-90 text-primary-foreground shadow-golden transition-all duration-300"
             size="icon"
           >
