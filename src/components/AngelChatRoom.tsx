@@ -876,7 +876,7 @@ Bé có muốn chia sẻ thêm điều gì với Angel không nè? Angel lắng 
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align={message.role === "user" ? "end" : "start"}>
-                      {message.role === "angel" ? (
+                    {message.role === "angel" ? (
                         <>
                           <DropdownMenuItem onClick={() => handleCopyMessage(message.content)}>
                             <Copy className="w-4 h-4 mr-2 text-golden-light" />
@@ -885,6 +885,13 @@ Bé có muốn chia sẻ thêm điều gì với Angel không nè? Angel lắng 
                           <DropdownMenuItem onClick={() => handleShareMessage(message.content)}>
                             <Share2 className="w-4 h-4 mr-2 text-golden-light" />
                             <span>Chia sẻ 🔗</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setDeleteMessageId(message.id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            <span>Xóa tin nhắn 🗑️</span>
                           </DropdownMenuItem>
                         </>
                       ) : (
