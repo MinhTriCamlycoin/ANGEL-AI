@@ -82,6 +82,8 @@ export type Database = {
           conversation_id: string
           created_at: string | null
           id: string
+          media_type: string | null
+          media_url: string | null
           role: string
         }
         Insert: {
@@ -89,6 +91,8 @@ export type Database = {
           conversation_id: string
           created_at?: string | null
           id?: string
+          media_type?: string | null
+          media_url?: string | null
           role: string
         }
         Update: {
@@ -96,6 +100,8 @@ export type Database = {
           conversation_id?: string
           created_at?: string | null
           id?: string
+          media_type?: string | null
+          media_url?: string | null
           role?: string
         }
         Relationships: [
@@ -107,6 +113,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      divine_knowledge: {
+        Row: {
+          approved: boolean | null
+          content: string
+          created_at: string | null
+          energy_level: number | null
+          id: string
+          source: string | null
+          tags: string[] | null
+          title: string
+        }
+        Insert: {
+          approved?: boolean | null
+          content: string
+          created_at?: string | null
+          energy_level?: number | null
+          id?: string
+          source?: string | null
+          tags?: string[] | null
+          title: string
+        }
+        Update: {
+          approved?: boolean | null
+          content?: string
+          created_at?: string | null
+          energy_level?: number | null
+          id?: string
+          source?: string | null
+          tags?: string[] | null
+          title?: string
+        }
+        Relationships: []
       }
       divine_mantras: {
         Row: {
