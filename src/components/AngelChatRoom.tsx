@@ -22,6 +22,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import angelLogo from "@/assets/angel-logo.jpg";
 
+interface Reaction {
+  id: string;
+  emoji: string;
+  user_id: string;
+}
+
 interface Message {
   id: string;
   role: "user" | "angel";
@@ -29,7 +35,10 @@ interface Message {
   created_at: string;
   media_url?: string | null;
   media_type?: "image" | "audio" | null;
+  reactions?: Reaction[];
 }
+
+const REACTION_EMOJIS = ['❤️', '✨', '🙏', '😊'] as const;
 
 interface AngelChatRoomProps {
   conversationId: string | null;
@@ -65,6 +74,7 @@ export const AngelChatRoom = ({
   const [deleteMessageId, setDeleteMessageId] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -176,6 +186,58 @@ export const AngelChatRoom = ({
       title: "🗑️ Đã xóa!",
       description: "Angel đã quên tin nhắn đó rồi nha bé ♡",
     });
+  };
+
+  // Handle reaction toggle
+  const handleReaction = async (messageId: string, emoji: string) => {
+    if (!userId || messageId === "greeting") return;
+
+    const existingReactions = reactions[messageId] || [];
+    const existingReaction = existingReactions.find(
+      (r) => r.emoji === emoji && r.user_id === userId
+    );
+
+    if (existingReaction) {
+      // Remove reaction
+      await supabase.from("message_reactions").delete().eq("id", existingReaction.id);
+      setReactions((prev) => ({
+        ...prev,
+        [messageId]: prev[messageId].filter((r) => r.id !== existingReaction.id),
+      }));
+    } else {
+      // Add reaction
+      const { data, error } = await supabase
+        .from("message_reactions")
+        .insert({ message_id: messageId, user_id: userId, emoji })
+        .select()
+        .single();
+
+      if (!error && data) {
+        setReactions((prev) => ({
+          ...prev,
+          [messageId]: [...(prev[messageId] || []), data as Reaction],
+        }));
+      }
+    }
+  };
+
+  // Load reactions for messages
+  const loadReactions = async (messageIds: string[]) => {
+    if (messageIds.length === 0) return;
+    
+    const { data } = await supabase
+      .from("message_reactions")
+      .select("*")
+      .in("message_id", messageIds);
+
+    if (data) {
+      const reactionMap: Record<string, Reaction[]> = {};
+      data.forEach((r) => {
+        if (!reactionMap[r.message_id]) reactionMap[r.message_id] = [];
+        reactionMap[r.message_id].push(r as Reaction);
+      });
+      setReactions(reactionMap);
+    }
   };
 
   // Handle image upload
@@ -371,6 +433,8 @@ export const AngelChatRoom = ({
           role: msg.role as "user" | "angel",
           media_type: msg.media_type as "image" | "audio" | null,
         })));
+        // Load reactions for messages
+        loadReactions(data.map(m => m.id));
         // Try to detect username from messages
         data.forEach((msg) => {
           if (msg.role === "user") {
@@ -757,6 +821,40 @@ Bé có muốn chia sẻ thêm điều gì với Angel không nè? Angel lắng 
                   <p className="whitespace-pre-wrap text-sm leading-relaxed">
                     {message.content}
                   </p>
+                </div>
+              )}
+
+              {/* Reaction Buttons */}
+              {message.id !== "greeting" && !editingMessageId && (
+                <div
+                  className={`flex items-center gap-1 mt-1 ${
+                    message.role === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  {REACTION_EMOJIS.map((emoji) => {
+                    const messageReactions = reactions[message.id] || [];
+                    const hasReacted = messageReactions.some(
+                      (r) => r.emoji === emoji && r.user_id === userId
+                    );
+                    const count = messageReactions.filter((r) => r.emoji === emoji).length;
+                    
+                    return (
+                      <button
+                        key={emoji}
+                        onClick={() => handleReaction(message.id, emoji)}
+                        className={`text-sm px-1.5 py-0.5 rounded-full transition-all duration-200 hover:scale-110 ${
+                          hasReacted
+                            ? "bg-golden-light/20 ring-1 ring-golden-light/50"
+                            : "opacity-50 hover:opacity-100 hover:bg-muted"
+                        }`}
+                      >
+                        {emoji}
+                        {count > 0 && (
+                          <span className="ml-0.5 text-xs text-muted-foreground">{count}</span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
