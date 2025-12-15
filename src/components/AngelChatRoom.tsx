@@ -412,6 +412,16 @@ export const AngelChatRoom = ({
     scrollToBottom();
   }, [messages]);
 
+  // Cleanup media recorder on unmount
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream?.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
   // Load messages when conversation changes
   useEffect(() => {
     if (!conversationId) {
@@ -963,10 +973,15 @@ Bé có muốn chia sẻ thêm điều gì với Angel không nè? Angel lắng 
           
           {/* Image upload button */}
           <Button
+            type="button"
             variant="ghost"
             size="icon"
             className="h-[52px] w-[52px] shrink-0 hover:bg-golden-light/10 text-muted-foreground hover:text-golden-light"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }}
             disabled={isUploading || isRecording}
           >
             {isUploading ? (
@@ -978,6 +993,7 @@ Bé có muốn chia sẻ thêm điều gì với Angel không nè? Angel lắng 
 
           {/* Voice recording button */}
           <Button
+            type="button"
             variant="ghost"
             size="icon"
             className={`h-[52px] w-[52px] shrink-0 ${
@@ -985,7 +1001,15 @@ Bé có muốn chia sẻ thêm điều gì với Angel không nè? Angel lắng 
                 ? "bg-destructive/20 text-destructive hover:bg-destructive/30 animate-pulse" 
                 : "hover:bg-golden-light/10 text-muted-foreground hover:text-golden-light"
             }`}
-            onClick={isRecording ? stopRecording : startRecording}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (isRecording) {
+                stopRecording();
+              } else {
+                startRecording();
+              }
+            }}
             disabled={isUploading}
           >
             {isRecording ? (
@@ -1005,6 +1029,7 @@ Bé có muốn chia sẻ thêm điều gì với Angel không nè? Angel lắng 
             disabled={isRecording}
           />
           <Button
+            type="button"
             onClick={handleSend}
             disabled={!input.trim() || isTyping || isRecording}
             className="h-[52px] w-[52px] bg-gradient-golden hover:opacity-90 text-primary-foreground shadow-golden transition-all duration-300"
