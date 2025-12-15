@@ -7,8 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, FileText, Trash2, LogOut, Shield } from "lucide-react";
+import { Loader2, Upload, FileText, Trash2, LogOut, Shield, Link, ExternalLink } from "lucide-react";
 import { User } from "@supabase/supabase-js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface KnowledgeItem {
   id: string;
@@ -35,6 +36,10 @@ const Admin = () => {
   const [source, setSource] = useState("");
   const [tags, setTags] = useState("");
   const [energyLevel, setEnergyLevel] = useState("12");
+  
+  // URL fetch state
+  const [urlInput, setUrlInput] = useState("");
+  const [isFetchingUrl, setIsFetchingUrl] = useState(false);
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -177,6 +182,50 @@ const Admin = () => {
     navigate("/auth");
   };
 
+  const handleFetchUrl = async () => {
+    if (!urlInput.trim()) {
+      toast({
+        title: "Thiếu URL",
+        description: "Vui lòng nhập URL của tài liệu",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsFetchingUrl(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-url-content', {
+        body: { url: urlInput.trim() },
+      });
+
+      if (error) throw error;
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch URL');
+      }
+
+      // Populate form with fetched content
+      setTitle(data.title || '');
+      setContent(data.content || '');
+      setSource(data.url || urlInput.trim());
+      
+      toast({
+        title: "Đã tải nội dung ✨",
+        description: "Nội dung từ URL đã được điền vào form. Bé có thể chỉnh sửa trước khi lưu.",
+      });
+    } catch (error: any) {
+      console.error('Error fetching URL:', error);
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể tải nội dung từ URL",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFetchingUrl(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-radial from-background via-background to-muted/20 flex items-center justify-center">
@@ -229,7 +278,56 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <Tabs defaultValue="text" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="text" className="gap-2">
+                    <FileText className="h-4 w-4" />
+                    Văn bản
+                  </TabsTrigger>
+                  <TabsTrigger value="url" className="gap-2">
+                    <Link className="h-4 w-4" />
+                    Từ URL
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="url" className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="urlInput">URL tài liệu</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="urlInput"
+                        placeholder="https://example.com/article"
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleFetchUrl}
+                        disabled={isFetchingUrl}
+                        className="shrink-0"
+                      >
+                        {isFetchingUrl ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ExternalLink className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Nhập URL và nhấn nút để tải nội dung tự động
+                    </p>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="text">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Nhập nội dung trực tiếp vào form bên dưới
+                  </p>
+                </TabsContent>
+              </Tabs>
+
+              <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">Tiêu đề *</Label>
                   <Input
