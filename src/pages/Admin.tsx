@@ -15,10 +15,9 @@ interface KnowledgeItem {
   id: string;
   title: string;
   content: string;
-  source: string | null;
-  tags: string[] | null;
-  energy_level: number | null;
-  created_at: string | null;
+  category: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 const Admin = () => {
@@ -33,9 +32,7 @@ const Admin = () => {
   // Form state
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [source, setSource] = useState("");
-  const [tags, setTags] = useState("");
-  const [energyLevel, setEnergyLevel] = useState("12");
+  const [category, setCategory] = useState("");
   
   // URL fetch state
   const [urlInput, setUrlInput] = useState("");
@@ -120,17 +117,10 @@ const Admin = () => {
 
     setIsSubmitting(true);
 
-    const tagsArray = tags.trim() 
-      ? tags.split(",").map(t => t.trim()).filter(t => t)
-      : null;
-
     const { error } = await supabase.from("divine_knowledge").insert({
       title: title.trim(),
       content: content.trim(),
-      source: source.trim() || null,
-      tags: tagsArray,
-      energy_level: parseInt(energyLevel) || 12,
-      approved: true,
+      category: category.trim() || null,
     });
 
     if (error) {
@@ -147,9 +137,7 @@ const Admin = () => {
       // Reset form
       setTitle("");
       setContent("");
-      setSource("");
-      setTags("");
-      setEnergyLevel("12");
+      setCategory("");
       loadKnowledge();
     }
 
@@ -208,7 +196,6 @@ const Admin = () => {
       // Populate form with fetched content
       setTitle(data.title || '');
       setContent(data.content || '');
-      setSource(data.url || urlInput.trim());
       
       toast({
         title: "Đã tải nội dung ✨",
@@ -352,34 +339,12 @@ const Admin = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="source">Nguồn</Label>
+                  <Label htmlFor="category">Danh mục</Label>
                   <Input
-                    id="source"
-                    placeholder="VD: Sách Thiền Định, Thầy ABC..."
-                    value={source}
-                    onChange={(e) => setSource(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tags">Tags (phân cách bằng dấu phẩy)</Label>
-                  <Input
-                    id="tags"
-                    placeholder="VD: thiền định, tâm linh, năng lượng"
-                    value={tags}
-                    onChange={(e) => setTags(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="energyLevel">Mức năng lượng (1-100)</Label>
-                  <Input
-                    id="energyLevel"
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={energyLevel}
-                    onChange={(e) => setEnergyLevel(e.target.value)}
+                    id="category"
+                    placeholder="VD: Thiền định, Năng lượng, Tâm linh..."
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
                   />
                 </div>
 
@@ -433,22 +398,10 @@ const Admin = () => {
                           <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
                             {item.content}
                           </p>
-                          {item.tags && item.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {item.tags.map((tag, i) => (
-                                <span
-                                  key={i}
-                                  className="text-xs px-2 py-0.5 rounded-full bg-golden-light/10 text-golden-light"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          {item.source && (
-                            <p className="text-xs text-muted-foreground mt-2">
-                              Nguồn: {item.source}
-                            </p>
+                          {item.category && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-golden-light/10 text-golden-light mt-2 inline-block">
+                              {item.category}
+                            </span>
                           )}
                         </div>
                         <Button
