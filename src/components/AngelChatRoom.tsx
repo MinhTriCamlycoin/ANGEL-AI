@@ -24,8 +24,9 @@ import angelLogo from "@/assets/angel-logo.jpg";
 
 interface Reaction {
   id: string;
-  emoji: string;
+  reaction: string;
   user_id: string;
+  message_id: string;
 }
 
 interface Message {
@@ -194,7 +195,7 @@ export const AngelChatRoom = ({
 
     const existingReactions = reactions[messageId] || [];
     const existingReaction = existingReactions.find(
-      (r) => r.emoji === emoji && r.user_id === userId
+      (r) => r.reaction === emoji && r.user_id === userId
     );
 
     if (existingReaction) {
@@ -208,7 +209,7 @@ export const AngelChatRoom = ({
       // Add reaction
       const { data, error } = await supabase
         .from("message_reactions")
-        .insert({ message_id: messageId, user_id: userId, emoji })
+        .insert({ message_id: messageId, user_id: userId, reaction: emoji })
         .select()
         .single();
 
@@ -234,7 +235,12 @@ export const AngelChatRoom = ({
       const reactionMap: Record<string, Reaction[]> = {};
       data.forEach((r) => {
         if (!reactionMap[r.message_id]) reactionMap[r.message_id] = [];
-        reactionMap[r.message_id].push(r as Reaction);
+        reactionMap[r.message_id].push({
+          id: r.id,
+          reaction: r.reaction,
+          user_id: r.user_id,
+          message_id: r.message_id,
+        });
       });
       setReactions(reactionMap);
     }
@@ -844,9 +850,9 @@ Bé có muốn chia sẻ thêm điều gì với Angel không nè? Angel lắng 
                   {REACTION_EMOJIS.map((emoji) => {
                     const messageReactions = reactions[message.id] || [];
                     const hasReacted = messageReactions.some(
-                      (r) => r.emoji === emoji && r.user_id === userId
+                      (r) => r.reaction === emoji && r.user_id === userId
                     );
-                    const count = messageReactions.filter((r) => r.emoji === emoji).length;
+                    const count = messageReactions.filter((r) => r.reaction === emoji).length;
                     
                     return (
                       <button
